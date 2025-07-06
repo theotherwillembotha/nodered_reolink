@@ -1,0 +1,112 @@
+<script type="text/javascript" template-section="onCompose">
+    node
+        .addDefault("name", { value:"Reolink GetChannels Example", required:true})
+        .addDefault("reolinkconfig", {type:"ReolinkConfigNode", required:true})
+        .addDefault("outputpath", {value:"payload",required:false})
+        .setIcon("reolink.png")
+        .setPaletteLabel("Reolink GetChannels")
+        .setLabelStyle("node_label_white")
+        .setLabel(function() {return this.name })
+        .setColor("#0050E5")
+        .setInput("input")
+        .addOutputs("channelList")
+</script>
+
+<div template-section="onIncludeOnce">
+    <style>
+        .node_label_white {
+            fill:white
+        }
+    </style>
+</div>
+
+<script type="text/javascript" template-section="onIncludeEditPrepare">
+    $("#node-input-outputpath").typedInput({
+        types: ["msg"]
+    });
+</script>
+
+<script type="text/javascript" template-section="onIncludeEditSave">
+</script>
+
+<script type="text/html" template-section="onIncludeEditForm">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" />
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-reolinkconfig"><i class="fa fa-tag"></i>Reolink Config</label>
+        <input type="text" id="node-input-reolinkconfig" />
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-outputpath"><i class="fa fa-tag"></i>Output Path:</label>
+        <input type="text" id="node-input-outputpath" />
+    </div>
+</script>
+
+<script type="text/markdown" template-section="onIncludeDocumentation">
+Returns a map of all available channels across the connected Reolink devices. Useful for discovering channel UIDs (needed by the Snapshot node) and checking per-device capability flags.
+
+### Properties
+
+: *name*           (string) : Display label for this node.
+: *reolink config* (config) : The Reolink Config node that manages the camera connections.
+: *output path*    (msg)    : Where in the output message to place the channel map. Defaults to `msg.payload`.
+
+### Inputs
+
+: *msg* : Any message. Used only as a trigger — content is ignored.
+
+### Outputs
+
+1. Standard output
+: *msg* : The input message with the channel map inserted at the configured output path.
+
+### Channel map structure
+
+```json
+{
+  "12345678ZT22ZABC": {
+    "uid": "12345678ZT22ZABC",
+    "name": "front patio",
+    "devices": [
+      {
+        "deviceURL": "http://192.168.0.124",
+        "channel": 0,
+        "abilities": {
+          "sirenSupport": false,
+          "webhookSupport": false,
+          "ledLightSupport": false
+        }
+      }
+    ]
+  },
+  "12345678ZT22ZLLL": {
+    "uid": "12345678ZT22ZLLL",
+    "name": "garage alley",
+    "devices": [
+      {
+        "deviceURL": "http://192.168.1.154",
+        "channel": 0,
+        "abilities": {
+          "sirenSupport": false,
+          "webhookSupport": true,
+          "ledLightSupport": false
+        }
+      }
+    ]
+  }
+}
+```
+
+### Notes
+
+- Each channel has a unique UID. Use this UID as the **Channel** field on the Snapshot node.
+- A standalone IPC appears as a single channel. An NVR exposes each connected camera as a separate channel.
+- If both an IPC and an NVR that it is connected to are added to the config node, that camera's channel will appear with two device entries — one for the IPC directly and one via the NVR.
+- Capability flags (`sirenSupport`, `webhookSupport`, `ledLightSupport`) are per-device, not per-channel. The NVR and the connected IPC may report different capabilities for the same physical camera.
+</script>
+
+

@@ -1,0 +1,108 @@
+
+<script type="text/javascript" template-section="onCompose">
+    node
+        .addDefault("name", { value:"Reolink Siren Example", required:true})
+        .addDefault("reolinkconfig", {type:"ReolinkConfigNode", required:true})
+        .addDefault("selectedDevices", {value:[], required:true})
+        .setIcon("reolink.png")
+        .setPaletteLabel("Reolink Siren")
+        .setLabelStyle("node_label_white")
+        .setLabel(function() {return this.name })
+        .setColor("#0050E5")
+        .setInput("input")
+        .addOutputs("siren")
+</script>
+
+<div template-section="onIncludeOnce">
+</div>
+
+<script type="text/javascript" template-section="onIncludeEditPrepare">
+{
+    let node = this;
+    node.selectedDevices = (node.selectedDevices) ? node.selectedDevices : [];
+
+    // first, we need to ge the id of the reolink config.
+    $("#node-input-reolinkconfig").on("change", () => {
+        let reolinkServerInstanceId = $("#node-input-reolinkconfig").val();
+
+        $.ajax({
+            url: "reolinkservice/findDevices",
+            type: "POST",
+            contentType: "application/json; charset=utf-8",
+            data:JSON.stringify({ id:reolinkServerInstanceId, ability:"sirenSupport" }),
+            success: (response) => {
+                let deviceSection = $("#node-input-availabledevices");
+                deviceSection.children().remove();
+                response.forEach(device => {
+                    let checked =  !!node.selectedDevices.find(selected => selected === device.device);
+                    let item = $(`<div>
+                        <input type="checkbox" class="reolink_device" name="${device.device}" ${checked?"checked":""} style="width:15%"/>
+                        <label style="width:auto">${device.name} (${device.device})</label>
+                    </div>`);
+                    item.appendTo(deviceSection);
+                });
+            },
+            error: (jqXHR, textStatus, errorThrown) => {
+                console.log(jqXHR, textStatus, errorThrown);
+            }
+        });
+    });
+}
+</script>
+
+<script type="text/javascript" template-section="onIncludeEditSave">
+{
+    let node = this;
+
+    node.selectedDevices = [];
+    $("#node-input-availabledevices")
+        .find(".reolink_device")
+        .filter((i, v) => v.checked)
+        .each((i, v) => node.selectedDevices.push(v.name));
+}
+</script>
+
+<script type="text/html" template-section="onIncludeEditForm">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" />
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-reolinkconfig"><i class="fa fa-tag"></i>Reolink Config</label>
+        <input type="text" id="node-input-reolinkconfig" />
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-availabledevices" style="width:auto"><i class="fa fa-tag"></i>Selected Devices</label>
+        <div id="node-input-availabledevices">
+        </div>
+    </div>
+</script>
+
+<script type="text/markdown" template-section="onIncludeDocumentation">
+Controls the siren/alarm on Reolink cameras that support it. Send a message with `msg.on = true` to activate the siren, or `msg.on = false` to stop it.
+
+Only devices that support the siren (`sirenSupport`) will appear in the device selection list.
+
+### Properties
+
+: *name*             (string)    : Display label for this node.
+: *reolink config*   (config)    : The Reolink Config node that manages the camera connections.
+: *selected devices* (checkboxes): The cameras to control. Only siren-capable devices are listed. The configured selection is used unless overridden per-message via `msg.device`.
+
+### Inputs
+
+: *msg.on*     (boolean) : `true` to activate the siren, `false` to stop it. Messages where this field is absent or not a boolean are silently ignored.
+: *msg.device* (string)  : Optional. The URL of a specific device to control (e.g. `http://192.168.0.100`). If provided, overrides the configured device selection and targets only that device.
+
+### Outputs
+
+1. Standard output
+: *msg* : The input message, passed through unchanged after the siren command is sent.
+
+### Notes
+
+- Not all Reolink cameras have a siren. Use the **Get Channels** node to check `sirenSupport` per device.
+- The siren activates in manual mode (`manul` in the Reolink API) — it will sound until explicitly stopped with `msg.on = false`.
+</script>

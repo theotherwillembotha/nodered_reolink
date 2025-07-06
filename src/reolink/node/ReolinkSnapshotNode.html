@@ -1,0 +1,76 @@
+
+<script type="text/javascript" template-section="onCompose">
+    node
+        .addDefault("name", { value:"Reolink Snapshot Example", required:true})
+        .addDefault("reolinkconfig", {type:"ReolinkConfigNode", required:true})
+        .addDefault("channel", {required:true})
+        .addDefault("outputpath", {value:"payload",required:false})
+        .setIcon("reolink.png")
+        .setPaletteLabel("Reolink Snapshot")
+        .setLabelStyle("node_label_white")
+        .setLabel(function() {return this.name })
+        .setColor("#0050E5")
+        .setInput("input")
+        .addOutputs("event")
+</script>
+
+<div template-section="onIncludeOnce">
+</div>
+
+<script type="text/javascript" template-section="onIncludeEditPrepare">
+    $("#node-input-outputpath").typedInput({
+        types: ["msg"]
+    });
+</script>
+
+<script type="text/javascript" template-section="onIncludeEditSave">
+</script>
+
+<script type="text/html" template-section="onIncludeEditForm">
+    <div class="form-row">
+        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-input-name" />
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-reolinkconfig"><i class="fa fa-tag"></i>Reolink Config</label>
+        <input type="text" id="node-input-reolinkconfig" />
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-channel"><i class="fa fa-tag"></i>Channel</label>
+        <input type="text" id="node-input-channel" />
+    </div>
+
+    <div class="form-row">
+        <label for="node-input-outputpath"><i class="fa fa-tag"></i>Output Path</label>
+        <input type="text" id="node-input-outputpath" />
+    </div>
+</script>
+
+<script type="text/markdown" template-section="onIncludeDocumentation">
+Captures a snapshot image from a specific Reolink camera channel when triggered by an incoming message. The image is returned as a binary `Buffer` and placed at the configured output path in the message.
+
+### Properties
+
+: *name*           (string) : Display label for this node.
+: *reolink config* (config) : The Reolink Config node that manages the camera connections.
+: *channel*        (string) : The UID of the channel to snapshot. Use the **Get Channels** node to discover available channel UIDs.
+: *output path*    (msg)    : Where in the output message to place the image buffer. Defaults to `msg.payload`.
+
+### Inputs
+
+: *msg* : Any message. The content is used only as a trigger — the channel to snapshot comes from the node configuration, not the message.
+
+### Outputs
+
+1. Standard output
+: *msg* : The input message with the snapshot buffer inserted at the configured output path.
+
+### Notes
+
+- The image is returned as a raw binary `Buffer`. Use a downstream node (e.g. a file write node or an HTTP response node) to save or serve it.
+- If the channel UID is not found on any connected device, the node will log an error and send nothing.
+- To find a channel's UID, use the **Get Channels** node and look at the `uid` field in the output.
+</script>
+

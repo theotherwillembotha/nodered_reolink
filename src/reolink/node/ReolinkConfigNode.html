@@ -1,0 +1,312 @@
+
+<script type="text/javascript" template-section="onCompose">
+    node
+        .addDefault("name", { value:"Reolink Example", required:true})
+        .addDefault("connections", {value:[], required:true})
+        .setPaletteLabel("Reolink Config Node")
+        .setLabel(function() {return this.name })
+</script>
+
+<div template-section="onIncludeOnce">
+    <style>
+        .theotherwillembotha-compact-table li {
+            padding-top: 4px;
+            padding-bottom: 4px;
+        }
+    </style>
+</div>
+
+<script type="text/javascript" template-section="onIncludeEditPrepare">
+{
+    let node = this;
+
+    let statusMap = {
+        ok:     {color:"#87a980", icon:"status_ok fa fa-thumbs-up"},
+        edited: {color:"#8f8f8f", icon:"status_edited fa fa-hourglass-o"},
+        fail:   {color:"#DA1C2F", icon:"status_fail fa fa-thumbs-down"},
+    }
+
+    // update the style of the device based on its status.
+    let updateStyle = function(testButtonColumn, style){
+        testButtonColumn.find(".fa").removeClass().addClass(style.icon);
+        testButtonColumn.css("background-color", style.color);
+    }
+
+    let connectionList = $("#node-config-input-connections-container")
+    connectionList.editableList({
+        sortable: true,
+        removable: true,
+        height: 'auto',
+        scrollOnAdd: true,
+        addButton: 'Add Connection',
+        header: $('<div>').append(
+            $.parseHTML(`
+            <div style='width:29%; margin-left:5%; display:inline-grid;'>URL</div>
+            <div style='width:29%; display:inline-grid;'>UserName</div>
+            <div style='width:auto; margin-right:5%; display:inline-grid;'>Password</div>
+            `)
+        ),
+        buttons: [{
+            label: "See Channels",
+            icon: "fa fa-star",
+            title: "See a list of channels and their linked devices",
+            click: () => {
+                showChannels();
+            },
+        }],
+        addItem: function(container, i, device){
+            let row =  $('<div/>', {
+                class: 'form-row',
+                style: 'display: flex; margin-bottom: 0;'
+            }).appendTo(container);
+
+            // Add the URL Column
+            let urlColumn = $('<input/>', {
+                type: 'text',
+                name: i,
+                required: true,
+                style: 'margin-left: 5px; margin-bottom: 0;',
+                class: 'connection-url'
+            }).appendTo(row);
+            urlColumn.val(device.url);
+
+            // Add the Username column
+            let usernameColumn = $('<input/>', {
+                type: 'text',
+                name: i,
+                required: true,
+                style: 'margin-left: 5px; margin-bottom: 0;',
+                class: 'connection-username'
+            }).appendTo(row)
+            usernameColumn.val(device.username);
+
+            // Add the Password column
+            let passwordColumn = $('<input/>', {
+                type: 'password',
+                name: i,
+                required: false,
+                style: 'margin-left: 5px; margin-bottom: 0;',
+                class: 'connection-password'
+            }).appendTo(row);
+            passwordColumn.val(device.password);
+
+            // add the test button column
+            let testButtonColumn = $(`
+                <a href="#" 
+                    class="red-ui-button red-ui-button-small connection-testbutton" 
+                    style="margin-left:4px; margin-top:8px; margin-right:-4px; background-color:#8f8f8f">
+                    <i class="fa fa-hourglass-o" style="color:white;"></i>
+                </a>`).appendTo(row)
+
+            let checkConnectionSemaphore = false;
+            let checkConnection = function(){
+                // enable the debounce.
+                if(checkConnectionSemaphore){
+                    return;
+                }
+                checkConnectionSemaphore = true;
+
+                // get the connecton details
+                let request  = {
+                    id:node.id,
+                    devices:[{
+                        url:urlColumn.val(), 
+                        username:usernameColumn.val(), 
+                        password:passwordColumn.val()
+                    }]
+                }
+
+                // send a request to check it:
+                $.ajax({
+                    url: "reolinkservice/testconnection",
+                    type: "POST",
+                    contentType: "application/json; charset=utf-8",
+                    data:JSON.stringify(request),
+                    success: (response) => {
+                        let dev = response.find(record => record.url === urlColumn.val());
+                        if(dev?.success){
+                            updateStyle(testButtonColumn, statusMap.ok);
+                        }
+                        else{
+                            updateStyle(testButtonColumn, statusMap.fail);
+                        }
+                        checkConnectionSemaphore = false;
+                    },
+                    error: (jqXHR, textStatus, errorThrown) => {
+                        console.log(jqXHR, textStatus, errorThrown);
+                        updateStyle(testButtonColumn, statusMap.error);
+                        checkConnectionSemaphore = false;
+                    },
+                });
+            }
+
+            urlColumn.on("change", () => updateStyle(testButtonColumn, statusMap.edited));
+            passwordColumn.on("change", () => updateStyle(testButtonColumn, statusMap.edited));
+            usernameColumn.on("change", () => updateStyle(testButtonColumn, statusMap.edited));
+            testButtonColumn.on("click", checkConnection);
+        },
+        removeItem :function(data){
+            // nothing to do here.
+        }
+    });
+    this.connections = this.connections || [
+        {url:"http://cam1.example.com", username:"myusername", password:"mypassword"},
+        {url:"http://cam2.example.com", username:"anotheruser", password:"anotherpassword"},
+    ];
+    connectionList.editableList('addItems', this.connections);
+
+    // after adding the items to the connection list, check the current status of the connections.
+    $.ajax({
+        url: "reolinkservice/connectionstatus",
+        type: "POST",
+        contentType: "application/json; charset=utf-8",
+        data:JSON.stringify({id:node.id}),
+        success: (response) => {
+
+            let connectionList = $("#node-config-input-connections-container").editableList('items');
+            connectionList.each(function(i) {
+                let url = $(this).find('.connection-url').val();
+                let testButton = $(this).find('.connection-testbutton');
+                let device = response.find(d => d.url === url);
+                updateStyle(testButton, 
+                    (!device) ? statusMap.edited : 
+                    (device.success) ? statusMap.ok :
+                    statusMap.fail
+                );
+            });
+        },
+        error: (jqXHR, textStatus, errorThrown) => {
+            console.log(jqXHR, textStatus, errorThrown);
+        },
+    });
+
+    let showChannels = () => {
+        let connections = [];
+
+        $("#node-config-input-connections-container").editableList('items').each(function(i) {
+            if($(this).find('.connection-testbutton').find(".status_ok").length > 0){
+                connections.push({
+                    url: $(this).find('.connection-url').val(),
+                    username: $(this).find('.connection-username').val(),
+                    password: $(this).find('.connection-password').val(),
+                });
+            }
+        });
+
+        $.ajax({
+            url: "reolinkservice/channellist",
+            type: "POST",
+            contentType: "application/json; charset=utf-8",
+            data: JSON.stringify({ connections: connections }),
+            success: (response) => {
+                let tick = v => $("<span>").text(v ? "\u2714" : "\u2718").css("color", v ? "green" : "#aaa");
+
+                let rows = Object.values(response).map(function(channel) {
+                    let abilities = channel.devices.reduce(function(acc, d) {
+                        let result = Object.assign({}, acc);
+                        Object.keys(d.abilities).forEach(function(key) {
+                            result[key] = !!acc[key] || !!d.abilities[key];
+                        });
+                        return result;
+                    }, {});
+
+                    return {
+                        uid:             channel.uid,
+                        name:            channel.name,
+                        sirenSupport:    abilities.sirenSupport,
+                        webhookSupport:  abilities.webhookSupport,
+                        ledLightSupport: abilities.ledLightSupport,
+                    };
+                });
+
+                PluginCore.dialog({
+                    title: "Channels",
+                    tabs: [{
+                        label: "Channels",
+                        render: function($container) {
+                            var $table = PluginCore.table({
+                                columns: [
+                                    { key: "uid",             label: "UID" },
+                                    { key: "name",            label: "Name" },
+                                    { key: "sirenSupport",    label: "Siren",   render: tick },
+                                    { key: "webhookSupport",  label: "Webhook", render: tick },
+                                    { key: "ledLightSupport", label: "LED",     render: tick },
+                                ],
+                                rows: rows,
+                            });
+                            $container.append($table);
+                        }
+                    }]
+                });
+            },
+            error: (jqXHR, textStatus, errorThrown) => {
+                console.log(jqXHR, textStatus, errorThrown);
+            },
+        });
+    };
+}
+</script>
+
+<script type="text/javascript" template-section="onIncludeEditSave">
+{
+    let node = this;
+
+    let connectionList = $("#node-config-input-connections-container").editableList('items');
+    node.connections = [];
+    connectionList.each(function(i) {
+        node.connections.push({
+            url: $(this).find('.connection-url').val(),
+            username: $(this).find('.connection-username').val(),
+            password: $(this).find('.connection-password').val(),
+        });
+    });
+}
+</script>
+
+<script type="text/html" template-section="onIncludeEditForm">
+    <div class="form-row">
+        <label for="{{defaults.name}}"><i class="fa fa-tag"></i> Name</label>
+        <input type="text" id="node-config-input-name" />
+    </div>
+
+    <div class="form-row" style="font-weight: 600;">
+        <i class="w-16 fa fa-eye"></i> <span>Reolink Devices</span>
+    </div>
+    <div class="form-row">
+        <span>
+            <ol id="node-config-input-connections-container" class="theotherwillembotha-compact-table"></ol>
+        </span>
+    </div>
+</script>
+
+<script type="text/markdown" template-section="onIncludeDocumentation">
+Shared configuration node for a Reolink integration. All Reolink nodes that should operate against the same set of cameras must reference the same config node.
+
+Supports both standalone IP cameras (IPC) and Network Video Recorders (NVR). Multiple devices can be added to a single config node — the plugin connects to each on deploy and builds a unified channel map across all of them.
+
+### Properties
+
+: *name*        (string) : Display label for this config node.
+: *connections* (list)   : One entry per Reolink device. Each entry requires a URL (e.g. `http://192.168.0.100`), a username, and a password. Use the test button on each row to verify connectivity before saving.
+
+### Connections
+
+Each connection row has a status indicator:
+
+- **Grey hourglass** — not yet tested or config has changed since last test
+- **Green thumbs-up** — connection successful
+- **Red thumbs-down** — connection failed (wrong credentials, device unreachable, etc.)
+
+### Channels
+
+Click **See Channels** in the connection list header to view the channel map across all connected devices. Channels are identified by a unique UID. An NVR exposes each connected camera as a separate channel; a standalone IPC appears as a single channel.
+
+### Webhooks
+
+The config node registers a webhook on each connected Reolink device so that motion and alarm events are pushed to Node-RED in real time. A Webhook Server config node is required for this. If the webhook URL changes (e.g. a different external host or port), the previous webhook on the device must be cleared manually before deploying the new one.
+
+### Notes
+
+- Reolink devices must be reachable from the Node-RED host over HTTP
+- Not all devices support all features (siren, spotlight, webhook). Use the channel view to check per-device capabilities
+</script>
