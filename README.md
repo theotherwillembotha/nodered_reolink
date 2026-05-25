@@ -41,6 +41,8 @@ Click **See Channels** to view the unified channel map across all connected devi
 
 If webhook-based events are needed, configure a Webhook Server and optionally a reverse proxy so that the camera can reach the Node-RED instance.
 
+![Reolink Config Node editor](documentation/ReolinkConfigNode.png)
+
 ---
 
 ### Reolink Event Node
@@ -49,6 +51,8 @@ Receives real-time motion and alarm events pushed from the camera via webhook. O
 
 **Input:** none — triggered by the camera
 **Output:** the event payload pushed by the camera
+
+![Reolink Event Node editor](documentation/ReolinkEventNode.png)
 
 ---
 
@@ -60,6 +64,8 @@ Captures a still image from a specific camera channel when triggered by an incom
 **Output:** the input message with the image `Buffer` placed at the configured output path (default: `msg.payload`)
 
 Use the **Get Channels** node to find the UID of the channel you want to snapshot.
+
+![Reolink Snapshot Node editor](documentation/ReolinkSnapshotNode.png)
 
 ---
 
@@ -73,6 +79,8 @@ Activates or deactivates the siren on cameras that support it (`sirenSupport`). 
 
 **Output:** the input message, passed through unchanged
 
+![Reolink Siren Node editor](documentation/ReolinkSirenNode.png)
+
 ---
 
 ### Reolink Spotlight Node
@@ -85,6 +93,8 @@ Controls the LED spotlight (white light) on cameras that support it (`ledLightSu
 
 No output port.
 
+![Reolink Spotlight Node editor](documentation/ReolinkSpotlightNode.png)
+
 ---
 
 ### Reolink Get Channels Node
@@ -93,6 +103,8 @@ Returns a map of all available channels across the connected Reolink devices. Us
 
 **Input:** any message (used as a trigger)
 **Output:** the input message with the channel map inserted at the configured output path (default: `msg.payload`)
+
+![Reolink Get Channels Node editor](documentation/ReolinkGetChannelsNode.png)
 
 Example output:
 

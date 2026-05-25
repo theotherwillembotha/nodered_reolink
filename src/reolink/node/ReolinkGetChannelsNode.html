@@ -1,15 +1,15 @@
 <script type="text/javascript" template-section="onCompose">
     node
-        .addDefault("name", { value:"Reolink GetChannels Example", required:true})
+        .addDefault("name", { value:"", required:false})
         .addDefault("reolinkconfig", {type:"ReolinkConfigNode", required:true})
         .addDefault("outputpath", {value:"payload",required:false})
         .setIcon("reolink.png")
-        .setPaletteLabel("Reolink GetChannels")
+        .setPaletteLabel("Get Channels")
         .setLabelStyle("node_label_white")
-        .setLabel(function() {return this.name })
+        .setLabel(function() {return this.name || 'get channels' })
         .setColor("#0050E5")
         .setInput("input")
-        .addOutputs("channelList")
+        .addOutputs("channels")
 </script>
 
 <div template-section="onIncludeOnce">
@@ -31,17 +31,17 @@
 
 <script type="text/html" template-section="onIncludeEditForm">
     <div class="form-row">
-        <label for="node-input-name"><i class="fa fa-tag"></i> Name</label>
+        <label for="node-input-name" class="towb_editorlabel"><i class="fa fa-tag"></i> Name</label>
         <input type="text" id="node-input-name" />
     </div>
 
     <div class="form-row">
-        <label for="node-input-reolinkconfig"><i class="fa fa-tag"></i>Reolink Config</label>
+        <label for="node-input-reolinkconfig" class="towb_editorlabel"><i class="fa fa-cog"></i> Reolink Config</label>
         <input type="text" id="node-input-reolinkconfig" />
     </div>
 
     <div class="form-row">
-        <label for="node-input-outputpath"><i class="fa fa-tag"></i>Output Path:</label>
+        <label for="node-input-outputpath" class="towb_editorlabel"><i class="fa fa-share"></i> Output Path</label>
         <input type="text" id="node-input-outputpath" />
     </div>
 </script>
