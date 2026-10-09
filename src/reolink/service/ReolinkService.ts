@@ -1,5 +1,5 @@
 import { NodeAPI, NodeAPISettingsWithData } from "node-red";
-import { BaseService, FlowDeployment, ServiceDescriptor } from "@theotherwillembotha/node-red-plugincore"
+import { BaseService, FlowDeployment, ServiceDescription } from "@theotherwillembotha/node-red-plugincore"
 import { AbilityInfo, ChannelInfo, DeviceInfo, DeviceType, P2PId, ReolinkClient, SirenConfig, WebhookConfig } from "../ReolinkClient";
 import { ReolinkAPI } from "../ReolinkAPI";
 
@@ -65,17 +65,30 @@ export class ServiceInstanceFacade {
     }
 }
 
+@ServiceDescription({
+    id: "@theotherwillembotha/reolinkservice",
+    name: "ReolinkService",
+    type: "integration-plugin",
+    sourceFile: "./reolink/service/ReolinkService",
+})
 export class ReolinkService extends BaseService {
 
     private red!: NodeAPI<NodeAPISettingsWithData>;
-    private static serviceInstances:{[key:string]:ServiceInstance} = {};
+    private static readonly _INSTANCES_KEY = '__reolink_service_instances__';
+
+    private static instancesMap(): {[key:string]:ServiceInstance} {
+        if (!(global as any)[ReolinkService._INSTANCES_KEY]) {
+            (global as any)[ReolinkService._INSTANCES_KEY] = {};
+        }
+        return (global as any)[ReolinkService._INSTANCES_KEY];
+    }
 
     constructor(){
         super("ReolinkService");
     }
 
     static get(id: string):ServiceInstanceFacade {
-        let instance:ServiceInstance = ReolinkService.serviceInstances[id];
+        let instance:ServiceInstance = ReolinkService.instancesMap()[id];
         return new ServiceInstanceFacade(instance);
     }
 
@@ -94,7 +107,7 @@ export class ReolinkService extends BaseService {
 
         // get the connection statuses.
         this.red.httpAdmin.post("/reolinkservice/connectionstatus", this.red.auth.needsPermission("inject.write"), async (request,response) => {
-            let serviceInstance = ReolinkService.serviceInstances[request.body.id];
+            let serviceInstance = ReolinkService.instancesMap()[request.body.id];
             if(serviceInstance){
                 let devices = await serviceInstance.devices();
                 response.send(devices.map(device => { return { 
@@ -111,7 +124,7 @@ export class ReolinkService extends BaseService {
         this.red.httpAdmin.post("/reolinkservice/findDevices", this.red.auth.needsPermission("inject.write"), async (request,response) => {
             let findDeviceRequest:{id:string, ability:keyof ChannelInfo} = request.body;
 
-            let serviceInstance = ReolinkService.serviceInstances[findDeviceRequest.id];
+            let serviceInstance = ReolinkService.instancesMap()[findDeviceRequest.id];
             if(serviceInstance){
                 let devices:Device[] = [];
                 serviceInstance.channels().forEach(channel => {
@@ -226,21 +239,13 @@ export class ReolinkService extends BaseService {
 
     private async updateConfig(config:ReolinkServiceConfig):Promise<DeviceClientStatus[]>{
         // check if we already have an instance of this service.
-        let serviceInstance = ReolinkService.serviceInstances[config.id];
+        let serviceInstance = ReolinkService.instancesMap()[config.id];
         if(!serviceInstance){
-            ReolinkService.serviceInstances[config.id] = serviceInstance = new ServiceInstance(config.id);
+            ReolinkService.instancesMap()[config.id] = serviceInstance = new ServiceInstance(config.id);
         }
         return await serviceInstance.update(config.devices);
     }
 
-    static override getServiceDescriptor():ServiceDescriptor {
-        return new ServiceDescriptor(
-            "@theotherwillembotha/reolinkservice",
-            "ReolinkService", 
-            "integration-plugin",
-            "./reolink/service/ReolinkService",
-            ReolinkService);
-    }
 }
 
 type Device = {
